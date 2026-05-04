@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | AfriCart</title>
+    <meta name="description" content="Complete your purchase securely at AfriCart. Enter your shipping details and confirm your order.">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* ── Checkout Page Layout ── */
+        .checkout-page-wrapper {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+            margin: 40px 0 80px;
+        }
+
+        /* Left – form */
+        .checkout-form-col {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Right – summary */
+        .checkout-summary-col {
+            width: 340px;
+            flex-shrink: 0;
+        }
+
+        /* Section cards */
+        .checkout-card {
+            background: #fff;
+            border: 1px solid #f0f0f0;
+            border-radius: 6px;
+            padding: 28px 30px;
+            margin-bottom: 20px;
+        }
+
+        .checkout-card h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 0 0 22px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        /* Form grid */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .form-group:last-child { margin-bottom: 0; }
+
+        .form-group label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 11px 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #111;
+            font-family: inherit;
+            transition: border-color 0.2s;
+            outline: none;
+            background: #fafafa;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: #ea580c;
+            background: #fff;
+        }
+
+        /* Shipping method cards */
+        .shipping-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .shipping-card:last-child { margin-bottom: 0; }
+
+        .shipping-card.active {
+            border-color: #ea580c;
+            background: #fff8f5;
+        }
+
+        .shipping-card .ship-radio {
+            width: 18px; height: 18px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.2s;
+        }
+
+        .shipping-card.active .ship-radio {
+            border-color: #ea580c;
+        }
+
+        .shipping-card.active .ship-radio::after {
+            content: '';
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #ea580c;
+        }
+
+        .shipping-card .ship-info { flex: 1; }
+
+        .shipping-card .ship-name {
+            font-size: 13px; font-weight: 600; color: #111; margin-bottom: 2px;
+        }
+
+        .shipping-card .ship-desc {
+            font-size: 11px; color: #777;
+        }
+
+        .shipping-card .ship-price {
+            font-size: 14px; font-weight: 700; color: #111;
+        }
+
+        /* Payment method cards — same style as delivery cards */
+        .payment-card {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .payment-card:last-child { margin-bottom: 0; }
+
+        .payment-card.active {
+            border-color: #ea580c;
+            background: #fff8f5;
+        }
+
+        .payment-card .pay-radio {
+            width: 18px; height: 18px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.2s;
+        }
+
+        .payment-card.active .pay-radio { border-color: #ea580c; }
+
+        .payment-card.active .pay-radio::after {
+            content: '';
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #ea580c;
+        }
+
+        .payment-card .pay-info { flex: 1; }
+        .payment-card .pay-name { font-size: 13px; font-weight: 600; color: #111; margin-bottom: 2px; }
+        .payment-card .pay-desc { font-size: 11px; color: #777; }
+        .payment-card .pay-icon { font-size: 20px; }
+
+        /* Order summary sidebar */
+        .summary-card {
+            background: #fff;
+            border: 1px solid #f0f0f0;
+            border-radius: 6px;
+            padding: 25px;
+        }
+
+        .summary-card h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #111;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin: 0 0 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .checkout-items-list { margin-bottom: 20px; }
+
+        .order-summary-item {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 13px;
+        }
+
+        .order-summary-item img {
+            width: 52px; height: 52px;
+            object-fit: contain;
+            background: #f9f9f9;
+            border-radius: 6px;
+            padding: 4px;
+            flex-shrink: 0;
+        }
+
+        .summary-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #777;
+            margin-bottom: 12px;
+        }
+
+        .summary-line span:last-child { font-weight: 700; color: #111; }
+
+        .summary-divider {
+            border: none;
+            border-top: 1px dashed #dcdcdc;
+            margin: 16px 0;
+        }
+
+        .summary-total-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 15px;
+            font-weight: 700;
+            color: #111;
+            margin-top: 16px;
+        }
+
+        /* Place order button */
+        .place-order-btn {
+            width: 100%;
+            padding: 16px;
+            background: #ea580c;
+            color: #fff;
+            font-weight: 700;
+            font-size: 12px;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .place-order-btn:hover { background: #c2410c; }
+        .place-order-btn:active { transform: scale(0.98); }
+        .place-order-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Security note */
+        .secure-note {
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            margin-top: 12px;
+        }
+
+        /* Success Modal */
+        .order-success-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .order-success-modal.active {
+            display: flex;
+        }
+
+        .order-success-inner {
+            background: #fff;
+            border-radius: 12px;
+            padding: 50px 40px;
+            max-width: 460px;
+            width: 92%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            animation: popIn 0.3s ease;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.85); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
+
+        .success-icon {
+            width: 72px; height: 72px;
+            background: #f0fdf4;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .success-icon svg { color: #22c55e; }
+
+        .success-title {
+            font-size: 22px; font-weight: 700; color: #111; margin-bottom: 8px;
+        }
+
+        .success-sub {
+            font-size: 13px; color: #777; margin-bottom: 6px;
+        }
+
+        .success-order-id {
+            font-size: 15px; font-weight: 700; color: #ea580c;
+            margin-bottom: 30px;
+        }
+
+        .success-actions {
+            display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .checkout-page-wrapper { flex-direction: column; }
+            .checkout-summary-col { width: 100%; }
+        }
+
+        @media (max-width: 600px) {
+            .form-row { grid-template-columns: 1fr; }
+            .checkout-card { padding: 20px; }
+        }
+
+        /* Loading spinner (reuse) */
+        .loading-spinner {
+            width: 16px; height: 16px;
+            border: 2px solid rgba(255,255,255,0.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar -->
+    <div class="container">
+        <header class="navbar">
+            <a href="index.html" class="logo">
+                <img src="assets/images/Layer 7.svg" alt="AfriCart Logo">
+            </a>
+
+            <div class="mobile-menu-toggle" id="mobile-menu-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </div>
+
+            <nav class="nav-links">
+                <a href="product.html">Products</a>
+                <div class="nav-dropdown">
+                    <span style="cursor: pointer;">Categories ▾</span>
+                    <div class="nav-dropdown-content">
+                        <a href="product?category=Electronics">Electronics</a>
+                        <a href="product?category=Fashion">Fashion</a>
+                        <a href="product?category=Accessories">Accessories</a>
+                        <a href="product?category=Home%20%26%20Office">Home &amp; Office</a>
+                        <a href="product?category=Sports">Sports</a>
+                    </div>
+                </div>
+                <a href="contact.html">Contact</a>
+            </nav>
+
+            <div class="nav-icons">
+                <div class="cart-icon-wrapper" onclick="window.location.href='cart.html'" style="cursor:pointer;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6h13M9 20a1 1 0 11-2 0 1 1 0 012 0zm10 0a1 1 0 11-2 0 1 1 0 012 0z" />
+                    </svg>
+                    <div class="cart-badge">0</div>
+                </div>
+                <a href="#" id="nav-user-profile" onclick="handleAuthClick(event)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- Breadcrumb -->
+        <div class="breadcrumb">
+            <a href="index.html">Home</a> &gt;
+            <a href="cart.html">Your Cart</a> &gt;
+            <span>Checkout</span>
+        </div>
+
+        <div class="section-title" style="margin-top:36px; margin-bottom:6px;">
+            <h1 style="font-size:18px; font-weight:700; color:#111;">Secure Checkout</h1>
+        </div>
+
+        <!-- Main Checkout Layout -->
+        <form id="checkout-form" onsubmit="window.handlePlaceOrder(event)">
+            <div class="checkout-page-wrapper">
+
+                <!-- LEFT COLUMN -->
+                <div class="checkout-form-col">
+
+                    <!-- Shipping Info -->
+                    <div class="checkout-card">
+                        <h3>Shipping Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ship-first">First Name</label>
+                                <input type="text" id="ship-first" placeholder="Kwame" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ship-last">Last Name</label>
+                                <input type="text" id="ship-last" placeholder="Mensah" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ship-address">Delivery Address</label>
+                            <input type="text" id="ship-address" placeholder="e.g. 4th Avenue, McCarthy Hill, Accra" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="ship-city">City</label>
+                                <input type="text" id="ship-city" placeholder="Accra" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="ship-region">Region</label>
+                                <select id="ship-region">
+                                    <option value="Greater Accra">Greater Accra</option>
+                                    <option value="Ashanti">Ashanti</option>
+                                    <option value="Western">Western</option>
+                                    <option value="Eastern">Eastern</option>
+                                    <option value="Central">Central</option>
+                                    <option value="Northern">Northern</option>
+                                    <option value="Volta">Volta</option>
+                                    <option value="Bono">Bono</option>
+                                    <option value="Upper East">Upper East</option>
+                                    <option value="Upper West">Upper West</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ship-phone">Phone Number</label>
+                            <input type="tel" id="ship-phone" placeholder="+233 XX XXX XXXX" required>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="checkout-card">
+                        <h3>Payment Method</h3>
+                        <p style="font-size:13px; color:#777; margin-bottom:18px; line-height:1.6;">Select how you'd like to pay upon delivery or pick-up.</p>
+                        <div id="payment-methods">
+                            <div class="payment-card active" data-payment="cash">
+                                <div class="pay-radio"></div>
+                                <div class="pay-icon">💳</div>
+                                <div class="pay-info">
+                                    <div class="pay-name">Cash on Delivery</div>
+                                    <div class="pay-desc">Pay with cash when your order arrives</div>
+                                </div>
+                            </div>
+                            <div class="payment-card" data-payment="momo">
+                                <div class="pay-radio"></div>
+                                <div class="pay-icon">📱</div>
+                                <div class="pay-info">
+                                    <div class="pay-name">Mobile Money</div>
+                                    <div class="pay-desc">Pay via Mobile Money</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN – Order Summary -->
+                <div class="checkout-summary-col">
+                    <div class="summary-card">
+                        <h3>Order Summary</h3>
+
+                        <!-- Items list injected by JS -->
+                        <div class="checkout-items-list" id="checkout-items-list">
+                            <!-- Populated by orders-service.js -->
+                        </div>
+
+                        <hr class="summary-divider">
+
+                        <div class="summary-line">
+                            <span>Subtotal</span>
+                            <span id="check-subtotal">GH₵ 0.00</span>
+                        </div>
+                        <div class="summary-line">
+                            <span>Delivery</span>
+                            <span id="check-shipping">GH₵ 15.00</span>
+                        </div>
+
+                        <hr class="summary-divider">
+
+                        <div class="summary-total-line">
+                            <span>Total Payable</span>
+                            <span id="check-total">GH₵ 0.00</span>
+                        </div>
+
+                        <button type="submit" class="place-order-btn" id="place-order-btn">
+                            Place Order
+                            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                            </svg>
+                        </button>
+
+                        <p class="secure-note">
+                            🔒 Your order is protected by AfriCart's buyer guarantee
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+        </form>
+
+        <!-- Footer -->
+        <footer>
+            <div class="footer-grid">
+                <div class="footer-col">
+                    <a href="index.html" class="logo mb-4">
+                        <img src="assets/images/Layer 7.svg" alt="AfriCart Logo">
+                    </a>
+                    <p>Providing the finest selection of modern products since 2020. We focus on quality, sustainability and great design.</p>
+                </div>
+                <div class="footer-col">
+                    <h4>Shop</h4>
+                    <ul>
+                        <li><a href="#">New Arrivals</a></li>
+                        <li><a href="#">Best Sellers</a></li>
+                        <li><a href="#">Sale Items</a></li>
+                        <li><a href="#">Gift Cards</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#">Shipping Policy</a></li>
+                        <li><a href="#">Returns &amp; Exchanges</a></li>
+                        <li><a href="#">FAQ</a></li>
+                        <li><a href="contact.html">Contact Us</a></li>
+                    </ul>
+                </div>
+                <div class="footer-col">
+                    <h4>Contact Info</h4>
+                    <ul>
+                        <li><span style="color:var(--grey);font-size:12px;margin-right:8px;">📍</span>McCarthy Hill, 4th Avenue<br>Accra - Ghana</li>
+                        <li style="margin-top:10px;"><span style="color:var(--grey);font-size:12px;margin-right:8px;">📞</span>+233207374178 / +233594329122</li>
+                        <li style="margin-top:10px;"><span style="color:var(--grey);font-size:12px;margin-right:8px;">✉️</span>support@africartgh.com</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <div>&copy; 2024 AfriCart. All rights reserved.</div>
+                <div style="display: flex; gap: 20px;">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobile-menu-overlay" class="mobile-menu-overlay">
+        <div class="mobile-menu-content">
+            <div id="mobile-menu-close">&times;</div>
+            <div id="mobile-menu-user"></div>
+            <div class="mobile-search-box">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" placeholder="Search products..." onkeyup="if(event.key === 'Enter') window.location.href='product.html?search='+encodeURIComponent(this.value)">
+            </div>
+            <nav>
+                <a href="index.html">Home</a>
+                <a href="product.html">All Products</a>
+                <a href="profile.html">My Account</a>
+                <a href="profile.html?section=orders">Orders</a>
+                <a href="contact.html">Contact Us</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- ── Order Success Modal ── -->
+    <div id="order-success-modal" class="order-success-modal">
+        <div class="order-success-inner">
+            <div class="success-icon">
+                <svg width="36" height="36" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div class="success-title">Order Placed!</div>
+            <div class="success-sub">Thank you for shopping with AfriCart.</div>
+            <div class="success-order-id" id="order-hash">#AF000000</div>
+            <p style="font-size:13px; color:#777; margin-bottom:28px; line-height:1.7;">
+                Your order has been received and is being prepared.<br>
+                We'll contact you shortly to confirm delivery details.
+            </p>
+            <div class="success-actions">
+                <a href="profile.html?section=orders" class="btn btn-black" style="padding:12px 28px; font-size:12px; letter-spacing:0.5px; text-decoration:none; display:inline-block;">View My Orders</a>
+                <a href="product.html" class="btn btn-outline" style="padding:12px 28px; font-size:12px; letter-spacing:0.5px; text-decoration:none; display:inline-block;">Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/supabase.js"></script>
+    <script src="js/cart.js?v=5"></script>
+    <script src="js/products.js"></script>
+    <script src="js/ui-service.js"></script>
+    <script src="js/auth-service.js"></script>
+    <script src="js/orders-service.js"></script>
+    <script src="js/reviews-service.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
